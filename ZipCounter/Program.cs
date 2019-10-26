@@ -98,29 +98,33 @@ namespace ZipCounter
 				zipCount[row.ZipCode].Add(row);
 			}
 
-			List<OutputRow> countByRow = new List<OutputRow>();
-			List<OutputRow> countByAddressData = new List<OutputRow>();
+			List<OutputRow> output = new List<OutputRow>();
 
 			foreach (var item in zipCount)
 			{
-				countByRow.Add(new OutputRow() { ZipCode = item.Key, Count = item.Value.Count });
-
+				var uniqueCount = 0;
 				HashSet<InputRow> usedAddresses = new HashSet<InputRow>();
-				var addressCount = new OutputRow() { ZipCode = item.Key, Count = 0 };
 				foreach (var addr in item.Value)
 				{
 					if (usedAddresses.Contains(addr))
 						continue;
 
 					usedAddresses.Add(addr);
-					addressCount.Count++;
+					uniqueCount++;
 				}
-				countByAddressData.Add(addressCount);
+
+
+				output.Add(new OutputRow()
+				{
+					ZipCode = item.Key,
+					NumberOfOccurences = item.Value.Count,
+					NumberOfUniqueAddresses = uniqueCount
+				});
 			}
 
-			using var writerStream = new StreamWriter(identifier);
+			using var writerStream = new StreamWriter($"../../../{identifier}.csv");
 			using var csvWriter = new CsvWriter(writerStream);
-			csvWriter.WriteRecords(countByRow.OrderBy(x => x.ZipCode));
+			csvWriter.WriteRecords(output.OrderBy(x => x.ZipCode));
 		}
 	}
 
@@ -128,7 +132,8 @@ namespace ZipCounter
 	public struct OutputRow
 	{
 		public int ZipCode { get; set; }
-		public int Count { get; set; }
+		public int NumberOfOccurences { get; set; }
+		public int NumberOfUniqueAddresses { get; set; }
 	}
 
 }

@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Text;
+using System;
 
 public struct InputRow
 {
@@ -34,11 +35,6 @@ namespace ZipCounter
 	class Program
 	{
 		/// <summary>
-		/// Format string, to be formated with a number between 1 and ReadFiles (inclusive) to retrive a CSV with adresses.
-		/// </summary>
-		public static readonly string getUrlFormatString = "https://journeyblobstorage.blob.core.windows.net/sabpublic/Group{0:00}.csv";
-
-		/// <summary>
 		/// The number of fiels to be read
 		/// </summary>
 		public const int ReadFiles = 10;
@@ -52,32 +48,18 @@ namespace ZipCounter
 
 		static void Main(string[] args)
 		{
-			Task<Task>[] readTasks = new Task<Task>[ReadFiles];
-			Task[] writeTasks = new Task[ReadFiles];
-			//do work
-			for (int i = 0; i < ReadFiles; i++)
-				readTasks[i] = runRequest(i + 1);
+			string workingDirectory = Environment.CurrentDirectory;
+			// or: Directory.GetCurrentDirectory() gives the same result
 
-			//wait for readin work to be done and get the write tasks
-			for (int i = 0; i < ReadFiles; i++)
-				writeTasks[i] = readTasks[i].Result;
+			// This will get the current PROJECT directory
+			string projectDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
 
-			//get cummulative report
-			var cummulative = new List<InputRow>();
-			foreach (var item in Total)
-				cummulative.AddRange(item);
-
-			//do cummulative report and wait for it to be done
-			MakeReport(cummulative, "cummulative").Wait();
-
-			//wait for all the other writes to be done
-			for (int i = 0; i < ReadFiles; i++)
-				writeTasks[i].Wait();
+			Console.WriteLine(projectDirectory);
 		}
 
 		static async Task<Task> runRequest(int i)
 		{
-			var asyncRequest = http.GetStreamAsync(string.Format(getUrlFormatString, i));
+			var asyncRequest = http.GetStreamAsync(string.Format(Resource1.ReadUriFormatString, i));
 			using StreamReader stream = new StreamReader(await asyncRequest);
 			using CsvReader reader = new CsvReader(stream);
 			reader.Configuration.HasHeaderRecord = true;
@@ -122,7 +104,7 @@ namespace ZipCounter
 				});
 			}
 
-			using var writerStream = new StreamWriter($"../../../{identifier}.csv");
+			using var writerStream = new StreamWriter($"../../../Output/{identifier}.csv");
 			using var csvWriter = new CsvWriter(writerStream);
 			csvWriter.WriteRecords(output.OrderBy(x => x.ZipCode));
 		}

@@ -61,6 +61,15 @@ namespace ZipCounter {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ../../../Output/.
+        /// </summary>
+        internal static string OutputFolderPath {
+            get {
+                return ResourceManager.GetString("OutputFolderPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to https://journeyblobstorage.blob.core.windows.net/sabpublic/Group{0:00}.csv.
         /// </summary>
         internal static string ReadUriFormatString {

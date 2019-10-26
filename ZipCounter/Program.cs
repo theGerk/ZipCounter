@@ -42,6 +42,27 @@ namespace ZipCounter
 
 		static void Main(string[] args)
 		{
+			Task<Task>[] readTasks = new Task<Task>[ReadFiles];
+			Task[] writeTasks = new Task[ReadFiles];
+			//do work
+			for (int i = 0; i < ReadFiles; i++)
+				readTasks[i] = runRequest(i + 1);
+
+			//wait for readin work to be done and get the write tasks
+			for (int i = 0; i < ReadFiles; i++)
+				writeTasks[i] = readTasks[i].Result;
+
+			//get cummulative report
+			var cummulative = new List<InputRow>();
+			foreach (var item in Total)
+				cummulative.AddRange(item);
+
+			//do cummulative report and wait for it to be done
+			MakeReport(cummulative, "cummulative").Wait();
+
+			//wait for all the other writes to be done
+			for (int i = 0; i < ReadFiles; i++)
+				writeTasks[i].Wait();
 		}
 
 		static async Task<Task> runRequest(int i)
@@ -91,7 +112,7 @@ namespace ZipCounter
 				});
 			}
 
-			using var writerStream = new StreamWriter($"../../../Output/{identifier}.csv");
+			using var writerStream = new StreamWriter($"{Resource1.OutputFolderPath}{identifier}.csv");
 			using var csvWriter = new CsvWriter(writerStream);
 			csvWriter.WriteRecords(output.OrderBy(x => x.ZipCode));
 		}

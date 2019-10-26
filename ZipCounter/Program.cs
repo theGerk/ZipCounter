@@ -6,15 +6,16 @@ using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Text;
 
 public struct InputRow
 {
 	public int ZipCode { get; set; }
 	public int ZipPlus4 { get; set; }
-	public int CustomerID { get; set; }
-	public string FirstName { get; set; }
-	public string LastName { get; set; }
-	public int PhoneNumber { get; set; }
+	//public int CustomerID { get; set; }
+	//public string FirstName { get; set; }
+	//public string LastName { get; set; }
+	//public int PhoneNumber { get; set; }
 	public string Address01 { get; set; }
 	public string Address02 { get; set; }
 	public string City { get; set; }
@@ -51,23 +52,30 @@ namespace ZipCounter
 
 		static void Main(string[] args)
 		{
-			Task[] tasks = new Task[ReadFiles];
+			Task<Task>[] readTasks = new Task<Task>[ReadFiles];
+			Task[] writeTasks = new Task[ReadFiles];
 			//do work
 			for (int i = 0; i < ReadFiles; i++)
-				runRequest(i + 1);
+				readTasks[i] = runRequest(i + 1);
 
-			//wait for work to be done
+			//wait for readin work to be done and get the write tasks
 			for (int i = 0; i < ReadFiles; i++)
-				tasks[i].Wait();
+				writeTasks[i] = readTasks[i].Result;
 
-			//write final file
-			var total = new List<InputRow>();
+			//get cummulative report
+			var cummulative = new List<InputRow>();
 			foreach (var item in Total)
-				total.AddRange(item);
-			MakeReport(total, "cummulative")
+				cummulative.AddRange(item);
+
+			//do cummulative report and wait for it to be done
+			MakeReport(cummulative, "cummulative").Wait();
+
+			//wait for all the other writes to be done
+			for (int i = 0; i < ReadFiles; i++)
+				writeTasks[i].Wait();
 		}
 
-		static async Task runRequest(int i)
+		static async Task<Task> runRequest(int i)
 		{
 			var asyncRequest = http.GetStreamAsync(string.Format(getUrlFormatString, i));
 			using StreamReader stream = new StreamReader(await asyncRequest);
@@ -75,14 +83,52 @@ namespace ZipCounter
 			reader.Configuration.HasHeaderRecord = true;
 			var inputRows = reader.GetRecords<InputRow>().ToArray();
 			Total.Add(inputRows);
-			MakeReport(inputRows, $"report {i:00}");
+			return MakeReport(inputRows, $"report{i:00}");
 		}
 
 
-		static void MakeReport(IList<InputRow> data, string identifier)
+		static async Task MakeReport(IList<InputRow> data, string identifier)
 		{
-			//Each line is an address
+			//Generate dictionary
+			Dictionary<int, List<InputRow>> zipCount = new Dictionary<int, List<InputRow>>();
+			foreach (var row in data)
+			{
+				if (!zipCount.ContainsKey(row.ZipCode))
+					zipCount[row.ZipCode] = new List<InputRow>();
+				zipCount[row.ZipCode].Add(row);
+			}
 
+			List<OutputRow> countByRow = new List<OutputRow>();
+			List<OutputRow> countByAddressData = new List<OutputRow>();
+
+			foreach (var item in zipCount)
+			{
+				countByRow.Add(new OutputRow() { ZipCode = item.Key, Count = item.Value.Count });
+
+				HashSet<InputRow> usedAddresses = new HashSet<InputRow>();
+				var addressCount = new OutputRow() { ZipCode = item.Key, Count = 0 };
+				foreach (var addr in item.Value)
+				{
+					if (usedAddresses.Contains(addr))
+						continue;
+
+					usedAddresses.Add(addr);
+					addressCount.Count++;
+				}
+				countByAddressData.Add(addressCount);
+			}
+
+			using var writerStream = new StreamWriter(identifier);
+			using var csvWriter = new CsvWriter(writerStream);
+			csvWriter.WriteRecords(countByRow.OrderBy(x => x.ZipCode));
 		}
 	}
+
+
+	public struct OutputRow
+	{
+		public int ZipCode { get; set; }
+		public int Count { get; set; }
+	}
+
 }

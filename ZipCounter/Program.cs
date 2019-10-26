@@ -24,12 +24,6 @@ public struct InputRow
 }
 
 
-public struct AddressCount
-{
-
-}
-
-
 namespace ZipCounter
 {
 	class Program
@@ -48,13 +42,6 @@ namespace ZipCounter
 
 		static void Main(string[] args)
 		{
-			string workingDirectory = Environment.CurrentDirectory;
-			// or: Directory.GetCurrentDirectory() gives the same result
-
-			// This will get the current PROJECT directory
-			string projectDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
-
-			Console.WriteLine(projectDirectory);
 		}
 
 		static async Task<Task> runRequest(int i)

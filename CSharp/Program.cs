@@ -4,6 +4,8 @@ using CsvHelper;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using Newtonsoft;
+
 
 namespace CSharp
 {
@@ -96,26 +98,30 @@ namespace CSharp
 
 		public static ZipCodeTally Total = new ZipCodeTally();
 
-		static async void Main(string[] args)
+		static void Main(string[] args)
 		{
 
 			for (int i = 1; i <= 10; i++)
 			{
-				var asyncRequest = http.GetStreamAsync(string.Format(getUrlFormatString, i));
-				asyncRequest.ContinueWith<Stream>()
-				using StreamReader stream = new StreamReader(await );
-				using CsvReader reader = new CsvReader(stream);
-				reader.Configuration.HasHeaderRecord = true;
-				ZipCodeTally current = new ZipCodeTally(reader.GetRecords<Address>());
-				Total.Insert(current);
-				await http.PostAsync(MakeReport(current);
+				runRequest(i);
 			}
-			MakeReport(Total);
+			File.WriteAllText($"total_report.json", MakeReport(Total));
+		}
+
+		static async void runRequest(int i)
+		{
+			var asyncRequest = http.GetStreamAsync(string.Format(getUrlFormatString, i));
+			using StreamReader stream = new StreamReader(await asyncRequest);
+			using CsvReader reader = new CsvReader(stream);
+			reader.Configuration.HasHeaderRecord = true;
+			ZipCodeTally current = new ZipCodeTally(reader.GetRecords<Address>());
+			Total.Insert(current);
+			File.WriteAllText($"report{i:00}.json", MakeReport(current));
 		}
 
 		static string MakeReport(ZipCodeTally tally)
 		{
-
+			return Newtonsoft.Json.JsonConvert.SerializeObject(tally);
 		}
 	}
 }

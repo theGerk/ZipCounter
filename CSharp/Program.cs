@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using Newtonsoft;
-
+using System.Threading.Tasks;
 
 namespace CSharp
 {
@@ -46,21 +46,23 @@ namespace CSharp
 		}
 
 
-		Dictionary<int, SpecificCount> zipCount = new Dictionary<int, SpecificCount>();
+		public Dictionary<int, SpecificCount> zipCount { get; private set; } = new Dictionary<int, SpecificCount>();
 
 		public int Total { get; private set; } = 0;
-		public IEnumerable<KeyValuePair<int, int>> ZipCodeTotals {
-			get => zipCount.Select(x => new KeyValuePair<int, int>(x.Key, x.Value.Total));
-		}
-		public IEnumerable<KeyValuePair<Address, int>> ZipCodePlus4Totals {
-			get => zipCount.SelectMany(x => x.Value.Counter.Select(y => new KeyValuePair<Address, int>(new Address() { ZipCode = x.Key, ZipPlus4 = y.Key }, y.Value)));
-		}
-		public IEnumerable<KeyValuePair<int, IEnumerable<KeyValuePair<int, int>>>> ZipCodePlus4ByZipCodes {
-			get => zipCount.Select(x => new KeyValuePair<int, IEnumerable<KeyValuePair<int, int>>>(x.Key, x.Value.Counter.Select(y => new KeyValuePair<int, int>(y.Key, y.Value))));
-		}
+		private IEnumerable<KeyValuePair<int, int>> ZipCodeTotals() => zipCount.Select(x => new KeyValuePair<int, int>(x.Key, x.Value.Total));
+		private IEnumerable<KeyValuePair<Address, int>> ZipCodePlus4Totals => zipCount.SelectMany(x => x.Value.Counter.Select(y => new KeyValuePair<Address, int>(new Address() { ZipCode = x.Key, ZipPlus4 = y.Key }, y.Value)));
+		private IEnumerable<KeyValuePair<int, IEnumerable<KeyValuePair<int, int>>>> ZipCodePlus4ByZipCodes => zipCount.Select(x => new KeyValuePair<int, IEnumerable<KeyValuePair<int, int>>>(x.Key, x.Value.Counter.Select(y => new KeyValuePair<int, int>(y.Key, y.Value))));
 
-		class SpecificCount
+		public class SpecificCount
 		{
+			public Dictionary<string, object> JSObjectLike()
+			{
+				var output = new Dictionary<string, object>();
+				output.Add("Total", Total);
+				output.Add("ByZipPlus4", Counter);
+				return output;
+			}
+
 			public SpecificCount(Address address, int count = 1)
 			{
 				Insert(address, count);
@@ -98,17 +100,24 @@ namespace CSharp
 
 		public static ZipCodeTally Total = new ZipCodeTally();
 
+		public const int ReadFiles = 10;
+
 		static void Main(string[] args)
 		{
+			Task[] tasks = new Task[10];
+			//do work
+			for (int i = 0; i < ReadFiles; i++)
+				runRequest(i + 1).Wait();
 
-			for (int i = 1; i <= 10; i++)
-			{
-				runRequest(i);
-			}
+			////wait for work to be done
+			//for (int i = 0; i < ReadFiles; i++)
+			//	tasks[i].Wait();
+
+			//write final file
 			File.WriteAllText($"total_report.json", MakeReport(Total));
 		}
 
-		static async void runRequest(int i)
+		static async Task runRequest(int i)
 		{
 			var asyncRequest = http.GetStreamAsync(string.Format(getUrlFormatString, i));
 			using StreamReader stream = new StreamReader(await asyncRequest);
@@ -121,7 +130,7 @@ namespace CSharp
 
 		static string MakeReport(ZipCodeTally tally)
 		{
-			return Newtonsoft.Json.JsonConvert.SerializeObject(tally);
+			return Newtonsoft.Json.JsonConvert.SerializeObject(tally, Newtonsoft.Json.Formatting.Indented);
 		}
 	}
 }

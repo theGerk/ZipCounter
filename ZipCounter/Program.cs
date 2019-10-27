@@ -3,26 +3,10 @@ using System.Linq;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Text;
 using System;
-
-public struct InputRow
-{
-	public int ZipCode { get; set; }
-	public int ZipPlus4 { get; set; }
-	//public int CustomerID { get; set; }
-	//public string FirstName { get; set; }
-	//public string LastName { get; set; }
-	//public int PhoneNumber { get; set; }
-	public string Address01 { get; set; }
-	public string Address02 { get; set; }
-	public string City { get; set; }
-	public string State { get; set; }
-}
-
+using System.Text;
 
 namespace ZipCounter
 {
@@ -38,7 +22,25 @@ namespace ZipCounter
 		/// </summary>
 		public static readonly HttpClient http = new HttpClient();
 
+		/// <summary>
+		/// Keeps track of all the outputs
+		/// </summary>
 		public static ConcurrentBag<InputRow[]> Total = new ConcurrentBag<InputRow[]>();
+
+
+		public static DirectoryInfo OutputFolder = GetOutputDir();
+		private static DirectoryInfo GetOutputDir()
+		{
+			var dir = new DirectoryInfo(Environment.CurrentDirectory);
+			for(; dir.Parent != null; dir = dir.Parent)
+			{
+				var output = dir.EnumerateDirectories().Where(innerDir => innerDir.Name == Resource1.OutputFolderName);
+				if (output.Any())
+					return output.First();
+			}
+			return Directory.CreateDirectory(Resource1.OutputFolderName);
+		}
+
 
 		static void Main(string[] args)
 		{
@@ -58,7 +60,7 @@ namespace ZipCounter
 				cummulative.AddRange(item);
 
 			//do cummulative report and wait for it to be done
-			MakeReport(cummulative, "cummulative").Wait();
+			MakeReport(cummulative, "Cummulative").Wait();
 
 			//wait for all the other writes to be done
 			for (int i = 0; i < ReadFiles; i++)
@@ -67,13 +69,33 @@ namespace ZipCounter
 
 		static async Task<Task> runRequest(int i)
 		{
-			var asyncRequest = http.GetStreamAsync(string.Format(Resource1.ReadUriFormatString, i));
+			//get Uri by format string
+			var inputUri = string.Format(Resource1.ReadUriFormatString, i);
+
+			//make the async reqest to the Uri
+			var asyncRequest = http.GetStreamAsync(inputUri);
+
+			//use some disposable resources
 			using StreamReader stream = new StreamReader(await asyncRequest);
 			using CsvReader reader = new CsvReader(stream);
+
+			//The CSV file has a header record
 			reader.Configuration.HasHeaderRecord = true;
+
+			//parse entire CSV file
 			var inputRows = reader.GetRecords<InputRow>().ToArray();
+
+			//input the parsed data the cummulative bag
 			Total.Add(inputRows);
-			return MakeReport(inputRows, $"report{i:00}");
+
+			//an ID string, will be the name of the output file when this is digested
+			string idString = $"Group{i:00}";
+
+			//Just a fun messege
+			Console.WriteLine($"Read in {idString} from {inputUri}");
+
+			//generate report and return the async task
+			return MakeReport(inputRows, idString);
 		}
 
 
@@ -112,11 +134,32 @@ namespace ZipCounter
 				});
 			}
 
-			using var writerStream = new StreamWriter($"{Resource1.OutputFolderPath}{identifier}.csv");
+			var outputFile = Path.Combine(OutputFolder.FullName, $"{identifier}.csv");
+			using var memoryStream = new MemoryStream();
+			using var writerStream = new StreamWriter(memoryStream);
 			using var csvWriter = new CsvWriter(writerStream);
 			csvWriter.WriteRecords(output.OrderBy(x => x.ZipCode));
+			memoryStream.Position = 0;
+			await memoryStream.CopyToAsync(new FileStream(outputFile, FileMode.Create));
+			Console.WriteLine($"Wrote out {identifier} to {outputFile}");
 		}
 	}
+
+
+	public struct InputRow
+	{
+		public int ZipCode { get; set; }
+		public int ZipPlus4 { get; set; }
+		//public int CustomerID { get; set; }
+		//public string FirstName { get; set; }
+		//public string LastName { get; set; }
+		//public int PhoneNumber { get; set; }
+		public string Address01 { get; set; }
+		public string Address02 { get; set; }
+		public string City { get; set; }
+		public string State { get; set; }
+	}
+
 
 
 	public struct OutputRow

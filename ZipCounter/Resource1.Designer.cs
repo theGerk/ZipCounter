@@ -61,11 +61,11 @@ namespace ZipCounter {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ../../../Output/.
+        ///   Looks up a localized string similar to Output.
         /// </summary>
-        internal static string OutputFolderPath {
+        internal static string OutputFolderName {
             get {
-                return ResourceManager.GetString("OutputFolderPath", resourceCulture);
+                return ResourceManager.GetString("OutputFolderName", resourceCulture);
             }
         }
         

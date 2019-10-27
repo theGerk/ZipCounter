@@ -117,9 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="OutputFolderPath" xml:space="preserve">
-    <value>../../../Output/</value>
-    <comment>The output folder. This includes a '/' at the end of the name</comment>
+  <data name="OutputFolderName" xml:space="preserve">
+    <value>Output</value>
+    <comment>The output folder's name.</comment>
   </data>
   <data name="ReadUriFormatString" xml:space="preserve">
     <value>https://journeyblobstorage.blob.core.windows.net/sabpublic/Group{0:00}.csv</value>

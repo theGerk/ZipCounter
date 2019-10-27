@@ -67,6 +67,11 @@ namespace ZipCounter
 				writeTasks[i].Wait();
 		}
 
+		/// <summary>
+		/// Runs the ith request, getting and reading the CSV, then hands off the rest of the work to do computation on the data and writing to a file.
+		/// </summary>
+		/// <param name="i">which request to run, must be integer in range [1,10]</param>
+		/// <returns>An async task (awaiting this will ensure the read is done) the task then contains another task. Awaiting the inner task will ensure the write is done</returns>
 		static async Task<Task> runRequest(int i)
 		{
 			//get Uri by format string
@@ -98,10 +103,16 @@ namespace ZipCounter
 			return MakeReport(inputRows, idString);
 		}
 
-
-		static async Task MakeReport(IList<InputRow> data, string identifier)
+		/// <summary>
+		/// Generates a report based on a collection of input data
+		/// <para>The report has three columns: ZipCode, NumberOfOccurences, and NumberOfUniqueOccurences. Occurences is the number of times the corresponding zip code appeared. NumberOfUniqueOccurences is the number of unique addresses that appeared with the corresponding zip code. For example if there are two rows with 221 B Baker Street at zip code 42, then that is a 2 in NumberofOccurences and a 1 in NumberOfUniqueOccurences.</para> 
+		/// </summary>
+		/// <param name="data">Input data</param>
+		/// <param name="identifier">the file to write out to (will have .csv extension appended)</param>
+		/// <returns>Asynchonus task to be awaited</returns>
+		static async Task MakeReport(IEnumerable<InputRow> data, string identifier)
 		{
-			//Generate dictionary
+			//Generate dictionary from zip codes to the collection of all rows with that zip
 			Dictionary<int, List<InputRow>> zipCount = new Dictionary<int, List<InputRow>>();
 			foreach (var row in data)
 			{
@@ -110,22 +121,28 @@ namespace ZipCounter
 				zipCount[row.ZipCode].Add(row);
 			}
 
+			//List of output data to be generated
 			List<OutputRow> output = new List<OutputRow>();
 
 			foreach (var item in zipCount)
 			{
+				//Find number of unique address in this zip code
 				var uniqueCount = 0;
 				HashSet<InputRow> usedAddresses = new HashSet<InputRow>();
+
+				//for each address in this zip code
 				foreach (var addr in item.Value)
 				{
+					//check if we've already seen it
 					if (usedAddresses.Contains(addr))
 						continue;
 
+					//if we haven't seen this address
 					usedAddresses.Add(addr);
 					uniqueCount++;
 				}
 
-
+				//add the zip code in as a row in the output
 				output.Add(new OutputRow()
 				{
 					ZipCode = item.Key,
@@ -133,14 +150,21 @@ namespace ZipCounter
 					NumberOfUniqueAddresses = uniqueCount
 				});
 			}
-
+			
+			//Get the output file's path
 			var outputFile = Path.Combine(OutputFolder.FullName, $"{identifier}.csv");
+
+			//create memory strem and write all data into the memory stream
 			using var memoryStream = new MemoryStream();
 			using var writerStream = new StreamWriter(memoryStream);
 			using var csvWriter = new CsvWriter(writerStream);
 			csvWriter.WriteRecords(output.OrderBy(x => x.ZipCode));
+
+			//put the memory stream back at position 0 and copy it to the output file asynchronously
 			memoryStream.Position = 0;
 			await memoryStream.CopyToAsync(new FileStream(outputFile, FileMode.Create));
+
+			//Say hello!
 			Console.WriteLine($"Wrote out {identifier} to {outputFile}");
 		}
 	}

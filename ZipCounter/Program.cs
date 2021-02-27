@@ -113,7 +113,7 @@ namespace ZipCounter
 		static async Task MakeReport(IEnumerable<InputRow> data, string identifier)
 		{
 			//Generate dictionary from zip codes to the collection of all rows with that zip
-			Dictionary<int, List<InputRow>> zipCount = new Dictionary<int, List<InputRow>>();
+			Dictionary<string, List<InputRow>> zipCount = new Dictionary<string, List<InputRow>>();
 			foreach (var row in data)
 			{
 				if (!zipCount.ContainsKey(row.ZipCode))
@@ -172,8 +172,8 @@ namespace ZipCounter
 
 	public struct InputRow
 	{
-		public int ZipCode { get; set; }
-		public int ZipPlus4 { get; set; }
+		public string ZipCode { get; set; }
+		//public int ZipPlus4 { get; set; }
 		//public int CustomerID { get; set; }
 		//public string FirstName { get; set; }
 		//public string LastName { get; set; }
@@ -188,7 +188,7 @@ namespace ZipCounter
 
 	public struct OutputRow
 	{
-		public int ZipCode { get; set; }
+		public string ZipCode { get; set; }
 		public int NumberOfOccurences { get; set; }
 		public int NumberOfUniqueAddresses { get; set; }
 	}
